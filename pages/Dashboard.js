@@ -1,167 +1,172 @@
-import React, { useEffect, useState } from "react";
-import { realtimeDb } from "./firebaseConfig";
-import { ref, get } from "firebase/database";
+import React, { useEffect, useMemo, useState } from "react";
+import Link from "next/link";
+import { ref, onValue } from "firebase/database";
+import {
+  FiActivity,
+  FiCpu,
+  FiHome,
+  FiLayers,
+  FiShield,
+} from "react-icons/fi";
+import AdminLayout from "../components/layout/AdminLayout";
+import { realtimeDb } from "../lib/firebase";
 import styles from "../styles/Dashboard.module.css";
-import { useRouter } from "next/router";
 
-export default function Dashboard() {
-  const router = useRouter();
-  const [totalObat, setTotalObat] = useState(0);
-  const [totalAlat, setTotalAlat] = useState(0);
-  const [totalPenyakit, setTotalPenyakit] = useState(0);
-  const [totalApotek, setTotalApotek] = useState(0);
-  const [recentActivities, setRecentActivities] = useState([]);
-  const [showPopup, setShowPopup] = useState(false);
+const metricConfig = [
+  { key: "obat", label: "Data Obat", icon: FiLayers, accent: "#4c6ef5" },
+  { key: "alat", label: "Data Alat", icon: FiCpu, accent: "#22b8cf" },
+  { key: "penyakit", label: "Data Penyakit", icon: FiShield, accent: "#fd7e14" },
+  { key: "apotek", label: "Jaringan Apotek", icon: FiHome, accent: "#10b981" },
+];
 
-  const obatRef = ref(realtimeDb, "obat");
-  const alatRef = ref(realtimeDb, "alat");
-  const penyakitRef = ref(realtimeDb, "penyakit");
-  const apotekRef = ref(realtimeDb, "apotek");
-  const activityRef = ref(realtimeDb, "userActivity");
+const Dashboard = () => {
+  const [counts, setCounts] = useState({
+    obat: 0,
+    alat: 0,
+    penyakit: 0,
+    apotek: 0,
+  });
+  const [activities, setActivities] = useState([]);
 
   useEffect(() => {
-    const fetchData = async () => {
-      const obatSnapshot = await get(obatRef);
-      if (obatSnapshot.exists()) {
-        setTotalObat(Object.keys(obatSnapshot.val()).length);
-      }
+    const resources = ["obat", "alat", "penyakit", "apotek"];
+    const unsubscribers = resources.map((resource) => {
+      const resourceRef = ref(realtimeDb, resource);
+      return onValue(resourceRef, (snapshot) => {
+        const total = snapshot.exists()
+          ? Object.keys(snapshot.val()).length
+          : 0;
+        setCounts((prev) => ({ ...prev, [resource]: total }));
+      });
+    });
 
-      const alatSnapshot = await get(alatRef);
-      if (alatSnapshot.exists()) {
-        setTotalAlat(Object.keys(alatSnapshot.val()).length);
+    const activityUnsub = onValue(ref(realtimeDb, "userActivity"), (snapshot) => {
+      if (!snapshot.exists()) {
+        setActivities([]);
+        return;
       }
+      const parsed = Object.entries(snapshot.val())
+        .map(([id, value]) => ({ id, ...value }))
+        .sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
+      setActivities(parsed.slice(0, 6));
+    });
 
-      const penyakitSnapshot = await get(penyakitRef);
-      if (penyakitSnapshot.exists()) {
-        setTotalPenyakit(Object.keys(penyakitSnapshot.val()).length);
-      }
-
-      const apotekSnapshot = await get(apotekRef);
-      if (apotekSnapshot.exists()) {
-        setTotalApotek(Object.keys(apotekSnapshot.val()).length);
-      }
-
-      const activitySnapshot = await get(activityRef);
-      if (activitySnapshot.exists()) {
-        const activityData = Object.keys(activitySnapshot.val()).map((key) => ({
-          id: key,
-          ...activitySnapshot.val()[key],
-        }));
-        setRecentActivities(activityData.slice(0, 5));
-      }
+    return () => {
+      unsubscribers.forEach((unsubscribe) => unsubscribe());
+      activityUnsub();
     };
-
-    fetchData();
   }, []);
 
-  const handleNavigation = (path) => router.push(`/${path}`);
-  const handleLogout = () => {
-    // Add your logout logic here
-    alert("Logged out");
-    setShowPopup(false);
-  };
+  const totalRecords = counts.obat + counts.alat + counts.penyakit + counts.apotek;
+
+  const insights = useMemo(
+    () => [
+      {
+        title: "Total Data",
+        value: totalRecords,
+        helper: "Gabungan seluruh entitas",
+      },
+      {
+        title: "Aktivitas Terbaru",
+        value: activities.length,
+        helper: "Catatan 24 jam terakhir",
+      },
+      {
+        title: "Rasio Obat/Alat",
+        value: `${counts.alat ? (counts.obat / counts.alat).toFixed(1) : counts.obat}x`,
+        helper: "Patokan stok dan logistik",
+      },
+    ],
+    [totalRecords, activities.length, counts.obat, counts.alat]
+  );
+
+  const quickActions = [
+    { label: "Tambah Obat", path: "/DaftarObat" },
+    { label: "Tambah Penyakit", path: "/DaftarPenyakit" },
+    { label: "Tambah Apotek", path: "/DaftarApotek" },
+  ];
 
   return (
-    <div className={styles.container}>
-      <header className={styles.navbar}>
-        <h1 className={styles.logo}>MedicaList</h1>
-        <div
-          className={styles.settingsButton}
-          onClick={() => setShowPopup(!showPopup)}
-        >
-          Settings
-        </div>
-        {showPopup && (
-          <div className={styles.popup}>
-            <button onClick={handleLogout}>Log Out</button>
-          </div>
-        )}
-      </header>
-      <aside className={styles.sidebar}>
-        <nav className={styles.menu}>
-          <button
-            className={styles.menuItem}
-            onClick={() => handleNavigation("Dashboard")}
-          >
-            Dashboard
-          </button>
-          <button
-            className={styles.menuItem}
-            onClick={() => handleNavigation("DaftarPenyakit")}
-          >
-            Penyakit
-          </button>
-          <button
-            className={styles.menuItem}
-            onClick={() => handleNavigation("DaftarObat")}
-          >
-            Obat
-          </button>
-          <button
-            className={styles.menuItem}
-            onClick={() => handleNavigation("DaftarAlat")}
-          >
-            Alat
-          </button>
-          <button
-            className={styles.menuItem}
-            onClick={() => handleNavigation("DaftarApotek")}
-          >
-            Apotek
-          </button>
-          <button
-            className={styles.menuItem}
-            onClick={() => handleNavigation("Chat")}
-          >
-            Chat
-          </button>
-        </nav>
-      </aside>
-      <main className={styles.mainContent}>
-        <h2 className={styles.header}>Dashboard</h2>
+    <AdminLayout
+      title="Dasbor MedicaList"
+      description="Ringkasan operasional aplikasi kesehatan Anda dalam satu layar."
+    >
+      <section className={styles.metrics}>
+        {metricConfig.map(({ key, label, icon: Icon, accent }) => (
+          <article key={key} className={styles.metricCard}>
+            <div className={styles.iconBubble} style={{ background: accent }}>
+              <Icon />
+            </div>
+            <div>
+              <p>{label}</p>
+              <h3>{counts[key]}</h3>
+            </div>
+          </article>
+        ))}
+      </section>
 
-        <div className={styles.statsContainer}>
-          <div className={styles.statCard}>
-            <h3>Total Obat</h3>
-            <p>{totalObat}</p>
+      <section className={styles.columns}>
+        <article className={styles.activityCard}>
+          <div className={styles.cardHeader}>
+            <div>
+              <h3>Aktivitas Terkini</h3>
+              <p>Pantau perubahan terakhir pada basis data.</p>
+            </div>
+            <FiActivity />
           </div>
-
-          <div className={styles.statCard}>
-            <h3>Total Alat</h3>
-            <p>{totalAlat}</p>
-          </div>
-
-          <div className={styles.statCard}>
-            <h3>Total Penyakit</h3>
-            <p>{totalPenyakit}</p>
-          </div>
-
-          <div className={styles.statCard}>
-            <h3>Total Apotek</h3>
-            <p>{totalApotek}</p>
-          </div>
-        </div>
-
-        <div className={styles.activityContainer}>
-          <h3>Recent Activities</h3>
-          <table className={styles.table}>
-            <thead>
-              <tr>
-                <th>Activity</th>
-                <th>Timestamp</th>
-              </tr>
-            </thead>
-            <tbody>
-              {recentActivities.map((activity) => (
-                <tr key={activity.id}>
-                  <td>{activity.activityName}</td>
-                  <td>{new Date(activity.timestamp).toLocaleString()}</td>
-                </tr>
+          {activities.length === 0 ? (
+            <p className={styles.emptyCopy}>Belum ada aktivitas tercatat.</p>
+          ) : (
+            <ul className={styles.activityList}>
+              {activities.map((activity) => (
+                <li key={activity.id}>
+                  <div>
+                    <strong>{activity.activityName || "Aktivitas"}</strong>
+                    <span>{activity.user || "System"}</span>
+                  </div>
+                  <span className={styles.timestamp}>
+                    {new Date(activity.timestamp || Date.now()).toLocaleString("id-ID", {
+                      day: "2-digit",
+                      month: "short",
+                      hour: "2-digit",
+                      minute: "2-digit",
+                    })}
+                  </span>
+                </li>
               ))}
-            </tbody>
-          </table>
-        </div>
-      </main>
-    </div>
+            </ul>
+          )}
+        </article>
+        <article className={styles.summaryCard}>
+          <h3>Insight Operasional</h3>
+          <div className={styles.insightGrid}>
+            {insights.map((insight) => (
+              <div key={insight.title} className={styles.insightItem}>
+                <small>{insight.title}</small>
+                <strong>{insight.value}</strong>
+                <p>{insight.helper}</p>
+              </div>
+            ))}
+          </div>
+          <div className={styles.quickActions}>
+            {quickActions.map((action) => (
+              <Link key={action.label} href={action.path}>
+                {action.label}
+              </Link>
+            ))}
+          </div>
+        </article>
+      </section>
+
+      <section className={styles.highlightCard}>
+        <h3>Kinerja Basis Data</h3>
+        <p>
+          Total {totalRecords} entri aktif. Pastikan setiap data divalidasi secara
+          berkala untuk menjaga kualitas layanan pasien.
+        </p>
+      </section>
+    </AdminLayout>
   );
-}
+};
+
+export default Dashboard;
