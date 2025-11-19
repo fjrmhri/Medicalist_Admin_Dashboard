@@ -1,199 +1,208 @@
-import React, { useState, useEffect } from "react";
-import { realtimeDb } from "./firebaseConfig";
+import React, { useEffect, useMemo, useState } from "react";
 import { ref, onValue, push, remove } from "firebase/database";
+import { FiSearch, FiSend, FiTrash2 } from "react-icons/fi";
+import AdminLayout from "../components/layout/AdminLayout";
+import { realtimeDb } from "../lib/firebase";
 import styles from "../styles/Chat.module.css";
-import { useRouter } from "next/router";
 
-export default function Chat() {
-  const router = useRouter();
-  const [chats, setChats] = useState([]);
-  const [selectedChat, setSelectedChat] = useState(null);
+const ADMIN_EMAIL = "admin@example.com";
+
+const Chat = () => {
+  const [conversations, setConversations] = useState([]);
+  const [activeChatId, setActiveChatId] = useState(null);
   const [messages, setMessages] = useState([]);
   const [newMessage, setNewMessage] = useState("");
+  const [searchQuery, setSearchQuery] = useState("");
 
   useEffect(() => {
     const chatsRef = ref(realtimeDb, "chats");
-    onValue(chatsRef, (snapshot) => {
-      const data = snapshot.val();
-      if (data) {
-        const chatList = Object.keys(data)
-          .map((key) => {
-            const chatData = data[key];
-            const firstMessage = Object.values(chatData)[0];
-            return {
-              id: key,
-              senderEmail: firstMessage.senderEmail || "No Email",
-            };
-          })
-          .filter((chat) => chat.senderEmail !== "admin@example.com");
-        setChats(chatList);
-      } else {
-        setChats([]);
+    const unsubscribe = onValue(chatsRef, (snapshot) => {
+      if (!snapshot.exists()) {
+        setConversations([]);
+        return;
       }
+      const data = snapshot.val();
+      const list = Object.entries(data)
+        .map(([id, messages]) => {
+          const orderedMessages = Object.values(messages).sort(
+            (a, b) => (a.timestamp || 0) - (b.timestamp || 0)
+          );
+          const firstMessage = orderedMessages[0];
+          const lastMessage = orderedMessages[orderedMessages.length - 1];
+          return {
+            id,
+            senderEmail: firstMessage?.senderEmail || firstMessage?.sender || "Pengguna",
+            lastMessage: lastMessage?.text || "",
+            lastTimestamp: lastMessage?.timestamp || 0,
+          };
+        })
+        .filter((chat) => chat.senderEmail !== ADMIN_EMAIL)
+        .sort((a, b) => b.lastTimestamp - a.lastTimestamp);
+
+      setConversations(list);
+      setActiveChatId((prev) => prev ?? list[0]?.id ?? null);
     });
+
+    return () => unsubscribe();
   }, []);
 
-  const selectChat = (chatId) => {
-    setSelectedChat(chatId);
-    const messagesRef = ref(realtimeDb, `chats/${chatId}`);
-    onValue(messagesRef, (snapshot) => {
-      const data = snapshot.val();
-      if (data) {
-        const chatMessages = Object.entries(data).map(([id, message]) => ({
-          id,
-          ...message,
-        }));
-        setMessages(chatMessages);
-      } else {
+  useEffect(() => {
+    if (!activeChatId) {
+      setMessages([]);
+      return undefined;
+    }
+    const messagesRef = ref(realtimeDb, `chats/${activeChatId}`);
+    const unsubscribe = onValue(messagesRef, (snapshot) => {
+      if (!snapshot.exists()) {
         setMessages([]);
+        return;
       }
+      const parsed = Object.entries(snapshot.val())
+        .map(([id, value]) => ({ id, ...value }))
+        .sort((a, b) => (a.timestamp || 0) - (b.timestamp || 0));
+      setMessages(parsed);
     });
-  };
 
-  const sendMessage = () => {
-    if (newMessage.trim() === "") return;
+    return () => unsubscribe();
+  }, [activeChatId]);
 
-    const messagesRef = ref(realtimeDb, `chats/${selectedChat}`);
-    push(messagesRef, {
+  const filteredConversations = useMemo(() => {
+    if (!searchQuery.trim()) return conversations;
+    const query = searchQuery.toLowerCase();
+    return conversations.filter((conversation) =>
+      conversation.senderEmail.toLowerCase().includes(query)
+    );
+  }, [conversations, searchQuery]);
+
+  const sendMessage = async () => {
+    if (!activeChatId || !newMessage.trim()) return;
+    const messagesRef = ref(realtimeDb, `chats/${activeChatId}`);
+    await push(messagesRef, {
       text: newMessage,
-      sender: "admin@example.com",
+      sender: ADMIN_EMAIL,
+      senderEmail: ADMIN_EMAIL,
       timestamp: Date.now(),
     });
     setNewMessage("");
   };
 
-  const deleteMessage = (messageId) => {
-    const messageRef = ref(realtimeDb, `chats/${selectedChat}/${messageId}`);
-    remove(messageRef);
-  };
-
-  const deleteChat = (chatId) => {
-    if (window.confirm("Apakah Anda yakin ingin menghapus chat ini?")) {
-      const chatRef = ref(realtimeDb, `chats/${chatId}`);
-      remove(chatRef);
-      setSelectedChat(null);
-      setMessages([]);
+  const deleteConversation = async (chatId) => {
+    const confirmed = window.confirm("Hapus percakapan ini?");
+    if (!confirmed) return;
+    await remove(ref(realtimeDb, `chats/${chatId}`));
+    if (chatId === activeChatId) {
+      setActiveChatId(null);
     }
   };
 
-  return (
-    <div className={styles.container}>
-      <header className={styles.navbar}>
-        <h1 className={styles.logo}>MedicaList</h1>
-      </header>
+  const deleteMessage = async (messageId) => {
+    if (!activeChatId) return;
+    await remove(ref(realtimeDb, `chats/${activeChatId}/${messageId}`));
+  };
 
-      <aside className={styles.sidebar}>
-        <nav className={styles.menu}>
-          <button
-            className={styles.menuItem}
-            onClick={() => router.push("/Dashboard")}
-          >
-            Dashboard
-          </button>
-          <button
-            className={styles.menuItem}
-            onClick={() => router.push("/DaftarPenyakit")}
-          >
-            Penyakit
-          </button>
-          <button
-            className={styles.menuItem}
-            onClick={() => router.push("/DaftarObat")}
-          >
-            Obat
-          </button>
-          <button
-            className={styles.menuItem}
-            onClick={() => router.push("/DaftarAlat")}
-          >
-            Alat
-          </button>
-          <button
-            className={styles.menuItem}
-            onClick={() => router.push("/DaftarApotek")}
-          >
-            Apotek
-          </button>
-          <button
-            className={styles.menuItem}
-            onClick={() => router.push("/Chat")}
-          >
-            Chat
-          </button>
-        </nav>
-      </aside>
-      <main className={styles.mainContent}>
-        <h2 className={styles.header}>Chat</h2>
-        <hr className={styles.horizontalLine} />
-        <div className={styles.chatContainer}>
-          <div className={styles.chatListContainer}>
-            <table className={styles.table}>
-              <thead>
-                <tr>
-                  <th>Sender</th>
-                </tr>
-              </thead>
-              <tbody>
-                {chats.map((chat) => (
-                  <tr key={chat.id} onClick={() => selectChat(chat.id)}>
-                    <td>{chat.senderEmail}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+  return (
+    <AdminLayout
+      title="Inbox Konsultasi"
+      description="Pantau dan balas pesan pasien secara real-time."
+    >
+      <div className={styles.chatShell}>
+        <section className={styles.sidebar}>
+          <div className={styles.sidebarHeader}>
+            <h3>Semua Pesan</h3>
+            <div className={styles.searchBox}>
+              <FiSearch />
+              <input
+                type="search"
+                placeholder="Cari pasien"
+                value={searchQuery}
+                onChange={(event) => setSearchQuery(event.target.value)}
+              />
+            </div>
           </div>
-          <div className={styles.separator}></div>
-          <div className={styles.chatSection}>
-            {selectedChat ? (
-              <>
-                <div
-                  className={styles.messagesContainer}
-                  style={{ overflowY: "scroll", maxHeight: "450px" }}
-                >
-                  {messages.map((message) => (
-                    <div
-                      key={message.id}
-                      className={
-                        message.sender === "admin@example.com"
-                          ? styles.adminMessage
-                          : styles.userMessage
-                      }
-                      onContextMenu={(e) => {
-                        e.preventDefault();
-                        if (
-                          window.confirm(
-                            "Apakah Anda yakin ingin menghapus pesan ini?"
-                          )
-                        ) {
-                          deleteMessage(message.id);
-                        }
-                      }}
-                    >
-                      <p>{message.text}</p>
-                    </div>
-                  ))}
-                </div>
-                <div className={styles.inputContainer}>
-                  <input
-                    type="text"
-                    value={newMessage}
-                    onChange={(e) => setNewMessage(e.target.value)}
-                    placeholder="Tulis pesan..."
-                    className={styles.input}
-                  />
-                  <button onClick={sendMessage} className={styles.sendButton}>
-                    Kirim
-                  </button>
-                </div>
-              </>
+          <div className={styles.conversationList}>
+            {filteredConversations.length === 0 ? (
+              <p className={styles.emptyCopy}>Belum ada percakapan.</p>
             ) : (
-              <p className={styles.noChatSelected}>
-                Pilih chat untuk memulai percakapan
-              </p>
+              filteredConversations.map((conversation) => (
+                <button
+                  key={conversation.id}
+                  className={`${styles.conversationItem} ${
+                    conversation.id === activeChatId ? styles.conversationActive : ""
+                  }`}
+                  onClick={() => setActiveChatId(conversation.id)}
+                >
+                  <div>
+                    <strong>{conversation.senderEmail}</strong>
+                    <p>{conversation.lastMessage || "Pesan baru"}</p>
+                  </div>
+                  <FiTrash2
+                    className={styles.deleteIcon}
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      deleteConversation(conversation.id);
+                    }}
+                  />
+                </button>
+              ))
             )}
           </div>
-        </div>
-      </main>
-    </div>
+        </section>
+
+        <section className={styles.thread}>
+          {activeChatId ? (
+            <>
+              <div className={styles.messages}>
+                {messages.length === 0 ? (
+                  <p className={styles.emptyCopy}>Mulai percakapan dengan pasien.</p>
+                ) : (
+                  messages.map((message) => (
+                    <div
+                      key={message.id}
+                      className={`${styles.message} ${
+                        message.sender === ADMIN_EMAIL
+                          ? styles.messageAdmin
+                          : styles.messageUser
+                      }`}
+                      onDoubleClick={() => deleteMessage(message.id)}
+                    >
+                      <p>{message.text}</p>
+                      <span>
+                        {new Date(message.timestamp || Date.now()).toLocaleString(
+                          "id-ID",
+                          {
+                            hour: "2-digit",
+                            minute: "2-digit",
+                          }
+                        )}
+                      </span>
+                    </div>
+                  ))
+                )}
+              </div>
+              <div className={styles.inputBar}>
+                <input
+                  type="text"
+                  placeholder="Tulis pesan balasan..."
+                  value={newMessage}
+                  onChange={(event) => setNewMessage(event.target.value)}
+                  onKeyDown={(event) => event.key === "Enter" && sendMessage()}
+                />
+                <button onClick={sendMessage}>
+                  <FiSend />
+                  Kirim
+                </button>
+              </div>
+            </>
+          ) : (
+            <div className={styles.emptyState}>
+              <h3>Pilih percakapan</h3>
+              <p>Tap salah satu pasien untuk mulai membalas pesan.</p>
+            </div>
+          )}
+        </section>
+      </div>
+    </AdminLayout>
   );
-}
+};
+
+export default Chat;
