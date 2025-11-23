@@ -138,10 +138,23 @@ const Chat = () => {
     }
   };
 
+  // Komponen aksi header layout untuk menampilkan status terkini
+  const layoutActions =
+    status.message && status.type !== "idle" ? (
+      <span
+        className={`${styles.statusMessage} ${
+          status.type === "error" ? styles.statusMessageError : ""
+        }`}
+      >
+        {status.message}
+      </span>
+    ) : null;
+
   return (
     <AdminLayout
       title="Inbox Konsultasi"
       description="Pantau dan balas pesan pasien secara real-time."
+      actions={layoutActions}
       actions=
         status.message && status.type !== "idle" ? (
           <span

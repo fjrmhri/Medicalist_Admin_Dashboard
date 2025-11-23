@@ -104,10 +104,23 @@ const Dashboard = () => {
     { label: "Tambah Apotek", path: "/DaftarApotek" },
   ];
 
+  // Status ringkas yang ditampilkan pada header layout
+  const layoutActions =
+    status.type !== "idle" && status.message ? (
+      <span
+        className={`${styles.statusMessage} ${
+          status.type === "error" ? styles.statusMessageError : ""
+        }`}
+      >
+        {status.message}
+      </span>
+    ) : null;
+
   return (
     <AdminLayout
       title="Dasbor MedicaList"
       description="Ringkasan operasional aplikasi kesehatan Anda dalam satu layar."
+      actions={layoutActions}
       actions=
         status.type !== "idle" && status.message ? (
           <span
