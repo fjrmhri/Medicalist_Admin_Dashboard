@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { ref, onValue } from "firebase/database";
+import { onValue, ref } from "firebase/database";
 import {
   FiActivity,
   FiCpu,
@@ -8,6 +8,7 @@ import {
   FiLayers,
   FiShield,
 } from "react-icons/fi";
+
 import AdminLayout from "../components/layout/AdminLayout";
 import { realtimeDb } from "../lib/firebase";
 import styles from "../styles/Dashboard.module.css";
@@ -27,29 +28,45 @@ const Dashboard = () => {
     apotek: 0,
   });
   const [activities, setActivities] = useState([]);
+  const [status, setStatus] = useState({ type: "idle", message: "" });
 
   useEffect(() => {
+    // Dengarkan perubahan setiap resource untuk menghitung ringkasan cepat
     const resources = ["obat", "alat", "penyakit", "apotek"];
     const unsubscribers = resources.map((resource) => {
       const resourceRef = ref(realtimeDb, resource);
-      return onValue(resourceRef, (snapshot) => {
-        const total = snapshot.exists()
-          ? Object.keys(snapshot.val()).length
-          : 0;
-        setCounts((prev) => ({ ...prev, [resource]: total }));
-      });
+      return onValue(
+        resourceRef,
+        (snapshot) => {
+          const total = snapshot.exists()
+            ? Object.keys(snapshot.val()).length
+            : 0;
+          setCounts((prev) => ({ ...prev, [resource]: total }));
+        },
+        (error) => {
+          console.error("Gagal memuat ringkasan resource", error);
+          setStatus({ type: "error", message: "Tidak bisa memuat data" });
+        }
+      );
     });
 
-    const activityUnsub = onValue(ref(realtimeDb, "userActivity"), (snapshot) => {
-      if (!snapshot.exists()) {
-        setActivities([]);
-        return;
+    const activityUnsub = onValue(
+      ref(realtimeDb, "userActivity"),
+      (snapshot) => {
+        if (!snapshot.exists()) {
+          setActivities([]);
+          return;
+        }
+        const parsed = Object.entries(snapshot.val())
+          .map(([id, value]) => ({ id, ...value }))
+          .sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
+        setActivities(parsed.slice(0, 6));
+      },
+      (error) => {
+        console.error("Gagal memuat aktivitas terbaru", error);
+        setStatus({ type: "error", message: "Tidak bisa memuat aktivitas" });
       }
-      const parsed = Object.entries(snapshot.val())
-        .map(([id, value]) => ({ id, ...value }))
-        .sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
-      setActivities(parsed.slice(0, 6));
-    });
+    );
 
     return () => {
       unsubscribers.forEach((unsubscribe) => unsubscribe());
@@ -59,6 +76,7 @@ const Dashboard = () => {
 
   const totalRecords = counts.obat + counts.alat + counts.penyakit + counts.apotek;
 
+  // Gunakan memo agar perhitungan insight tidak memicu render ulang yang tidak perlu
   const insights = useMemo(
     () => [
       {
@@ -90,6 +108,16 @@ const Dashboard = () => {
     <AdminLayout
       title="Dasbor MedicaList"
       description="Ringkasan operasional aplikasi kesehatan Anda dalam satu layar."
+      actions=
+        status.type !== "idle" && status.message ? (
+          <span
+            className={`${styles.statusMessage} ${
+              status.type === "error" ? styles.statusMessageError : ""
+            }`}
+          >
+            {status.message}
+          </span>
+        ) : null
     >
       <section className={styles.metrics}>
         {metricConfig.map(({ key, label, icon: Icon, accent }) => (
