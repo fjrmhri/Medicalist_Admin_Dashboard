@@ -1,85 +1,56 @@
+<p align="center">
+  <img src="https://img.shields.io/github/stars/fjrmhri/Pomo-Pixel?style=for-the-badge&logo=github&color=8b5cf6" alt="Stars"/>
+  <img src="https://img.shields.io/github/license/fjrmhri/Pomo-Pixel?style=for-the-badge&color=10b981" alt="License"/>
+  <img src="https://img.shields.io/badge/Next.js-15.1.0-black?style=for-the-badge&logo=next.js" alt="Next.js"/>
+  <img src="https://img.shields.io/badge/Firebase-11.1.0-FFCA28?style=for-the-badge&logo=firebase" alt="Firebase"/>
+  <img src="https://img.shields.io/badge/Bootstrap-5.3.3-7952B3?style=for-the-badge&logo=bootstrap" alt="Bootstrap"/>
+</p>
+
 # MedicaList Admin Dashboard
 
-MedicaList Admin Dashboard adalah aplikasi Next.js yang digunakan tim medis untuk
-mengelola data penyakit, obat, alat, dan jaringan apotek sekaligus memantau
-komunikasi pasien melalui chat. Proyek ini telah direfaktor agar mengikuti
-praktik clean code, responsif di semua perangkat, dan menyajikan antarmuka
-modern yang mudah dipahami.
+Dashboard admin berbasis Next.js untuk mengelola data kesehatan (penyakit, obat, alat, apotek) serta percakapan pasien secara real-time. Proyek ini menggunakan Firebase sebagai backend sehingga pembaruan data langsung tercermin di antarmuka.
 
 ## Fitur Utama
+- **Autentikasi sederhana**: Validasi kredensial admin melalui Firestore sebelum masuk dashboard.
+- **CRUD terpusat**: Komponen ResourceManager memudahkan tambah/ubah/hapus data penyakit, obat, alat, dan apotek.
+- **Monitoring aktivitas**: Ringkasan metrik dan aktivitas terbaru pengguna pada halaman dashboard.
+- **Chat real-time**: Balas pesan pasien dan kelola percakapan dengan Realtime Database.
+- **Pengaturan sistem**: Perbarui identitas organisasi, kontak, dan preferensi tampilan dengan sinkronisasi langsung.
 
-- **Dashboard ringkas** – menampilkan metrik penting, aktivitas terbaru, dan
-  tautan aksi cepat.
-- **Manajemen data** – modul CRUD untuk penyakit, obat, alat kesehatan, dan
-  apotek dengan pencarian instan.
-- **Chat admin** – balas pesan pasien secara real-time dan kelola percakapan
-  langsung dari dashboard.
-- **Halaman pengaturan** – perbarui identitas organisasi dan preferensi tampilan
-  yang tersimpan di Firebase Realtime Database.
-- **Autentikasi dasar** – halaman login terhubung ke koleksi `admin` pada
-  Firestore.
+## Prasyarat
+- Node.js 18+ dan npm
+- Akun Firebase dengan Realtime Database serta Firestore aktif
 
-## Teknologi
-
-- [Next.js 15](https://nextjs.org/) & React 18
-- [Firebase Realtime Database & Firestore](https://firebase.google.com/)
-- [React Icons](https://react-icons.github.io/react-icons/) untuk ikon UI
-- CSS Modules + custom layout components
-
-## Menjalankan Proyek
-
+## Cara Instalasi & Menjalankan
 1. **Instal dependensi**
-
    ```bash
    npm install
    ```
-
-2. **Menjalankan di mode pengembangan**
-
+2. **Jalankan mode pengembangan**
    ```bash
    npm run dev
    ```
-
    Aplikasi tersedia di `http://localhost:3000`.
-
-3. **Build produksi**
-
+3. **Build & jalankan produksi**
    ```bash
-   npm run build:next
-   npm run start:next
+   npm run build
+   npm start
    ```
 
-## Struktur Direktori Penting
+## Konfigurasi Lingkungan
+- Salin kredensial Firebase ke `lib/firebase.js` sesuai proyek Anda (apiKey, authDomain, projectId, databaseURL, dst.).
+- Jika ingin memakai variabel lingkungan, buat berkas `.env.local` dan referensikan pada `firebaseConfig` sesuai kebutuhan.
 
+## Struktur Direktori Singkat
 ```
 components/
-  layout/        -> Komponen layout dan navigasi utama
-  resources/     -> ResourceManager reusable untuk modul CRUD
-  ui/            -> Komponen utilitas (Modal, EmptyState)
-lib/
-  firebase.js    -> Inisialisasi Firebase
-pages/
-  *.js           -> Halaman Next.js (Dashboard, Chat, Login, dll)
-styles/
-  *.module.css   -> Styling modular per fitur
+  layout/       // Kerangka layout admin
+  resources/    // ResourceManager untuk operasi CRUD
+  ui/           // Komponen UI umum (Modal, EmptyState)
+lib/            // Inisialisasi Firebase
+pages/          // Halaman Next.js (Dashboard, Login, Chat, dll.)
+styles/         // CSS Modules per fitur
 ```
 
-## Konfigurasi Firebase
-
-Nilai konfigurasi Firebase berada pada `lib/firebase.js`. Pastikan kredensial yang
-digunakan memiliki akses ke:
-
-- Firestore koleksi `admin` untuk autentikasi sederhana.
-- Realtime Database dengan node `obat`, `alat`, `penyakit`, `apotek`,
-  `userActivity`, `chats`, dan `settings/general`.
-
-## Kontribusi
-
-1. Fork repositori dan buat branch fitur: `git checkout -b fitur-anda`.
-2. Pastikan `npm run build:next` berjalan tanpa error.
-3. Kirim pull request dengan deskripsi perubahan yang jelas.
-
 ## Lisensi
-
-Proyek ini dirilis dengan lisensi MIT. Silakan gunakan dan kembangkan sesuai
-kebutuhan organisasi Anda.
+Proyek dirilis di bawah lisensi MIT. Silakan gunakan, modifikasi, dan distribusikan sesuai kebutuhan organisasi Anda.

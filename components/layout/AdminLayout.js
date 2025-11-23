@@ -13,6 +13,7 @@ import {
 } from "react-icons/fi";
 import styles from "../../styles/AdminLayout.module.css";
 
+// Daftar menu utama yang digunakan seluruh halaman admin
 const navItems = [
   { label: "Dashboard", href: "/Dashboard", icon: FiActivity },
   { label: "Penyakit", href: "/DaftarPenyakit", icon: FiThermometer },
@@ -30,6 +31,7 @@ const AdminLayout = ({ title, description, children, actions }) => {
   const toggleSidebar = () => setIsSidebarOpen((prev) => !prev);
 
   const handleLogout = () => {
+    // Tidak ada sesi kompleks, cukup arahkan kembali ke halaman login
     router.push("/Login");
   };
 
