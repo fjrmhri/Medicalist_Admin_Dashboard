@@ -142,7 +142,11 @@ const Chat = () => {
     <AdminLayout
       title="Inbox Konsultasi"
       description="Pantau dan balas pesan pasien secara real-time."
+
+      actions={
+
       actions=
+
         status.message && status.type !== "idle" ? (
           <span
             className={`${styles.statusMessage} ${
@@ -152,6 +156,10 @@ const Chat = () => {
             {status.message}
           </span>
         ) : null
+
+      }
+
+
     >
       <div className={styles.chatShell}>
         <section className={styles.sidebar}>

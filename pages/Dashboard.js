@@ -108,6 +108,8 @@ const Dashboard = () => {
     <AdminLayout
       title="Dasbor MedicaList"
       description="Ringkasan operasional aplikasi kesehatan Anda dalam satu layar."
+      actions={
+
       actions=
         status.type !== "idle" && status.message ? (
           <span
@@ -118,6 +120,8 @@ const Dashboard = () => {
             {status.message}
           </span>
         ) : null
+      }
+
     >
       <section className={styles.metrics}>
         {metricConfig.map(({ key, label, icon: Icon, accent }) => (
