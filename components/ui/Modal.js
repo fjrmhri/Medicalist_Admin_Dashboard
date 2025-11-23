@@ -2,6 +2,7 @@ import React from "react";
 import styles from "../../styles/Modal.module.css";
 
 const Modal = ({ title, children, isOpen, onClose, onConfirm, confirmLabel }) => {
+  // Tidak perlu render DOM ketika modal ditutup untuk menjaga performa
   if (!isOpen) return null;
 
   return (

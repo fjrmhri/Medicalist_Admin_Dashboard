@@ -1,10 +1,11 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { ref, onValue, push, set, remove } from "firebase/database";
+import { onValue, push, ref, remove, set } from "firebase/database";
 import { FiEdit2, FiPlus, FiSearch, FiTrash2 } from "react-icons/fi";
+
 import { realtimeDb } from "../../lib/firebase";
-import styles from "../../styles/ResourceManager.module.css";
 import Modal from "../ui/Modal";
 import EmptyState from "../ui/EmptyState";
+import styles from "../../styles/ResourceManager.module.css";
 
 const buildDefaultState = (fields) =>
   fields.reduce((acc, field) => {
@@ -21,6 +22,7 @@ const ResourceManager = ({ resourcePath, resourceName, description, fields }) =>
   const [status, setStatus] = useState({ type: "idle", message: "" });
 
   useEffect(() => {
+    // Tarik data resource dari Realtime Database dan dengarkan perubahan selanjutnya
     const resourceRef = ref(realtimeDb, resourcePath);
     const unsubscribe = onValue(
       resourceRef,
@@ -38,6 +40,7 @@ const ResourceManager = ({ resourcePath, resourceName, description, fields }) =>
       },
       (error) => {
         setStatus({ type: "error", message: error.message });
+        console.error(`Gagal memuat ${resourceName}`, error);
       }
     );
 
@@ -47,6 +50,7 @@ const ResourceManager = ({ resourcePath, resourceName, description, fields }) =>
   const tableFields = fields.filter((field) => field.showInTable !== false);
 
   const filteredItems = useMemo(() => {
+    // Pencarian sederhana berbasis teks lintas kolom
     if (!searchQuery.trim()) return items;
     const query = searchQuery.toLowerCase();
     return items.filter((item) =>
@@ -121,6 +125,7 @@ const ResourceManager = ({ resourcePath, resourceName, description, fields }) =>
     } catch (error) {
       setStatus({ type: "error", message: error.message });
       setTimeout(() => setStatus({ type: "idle", message: "" }), 3000);
+      console.error(`Gagal menyimpan ${resourceName}`, error);
     }
   };
 
