@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
-import { ref, onValue, set } from "firebase/database";
+import { onValue, ref, set } from "firebase/database";
+
 import AdminLayout from "../components/layout/AdminLayout";
 import { realtimeDb } from "../lib/firebase";
 import styles from "../styles/Settings.module.css";
@@ -17,12 +18,20 @@ const Setting = () => {
   const [status, setStatus] = useState({ state: "idle", message: "" });
 
   useEffect(() => {
+    // Sinkronkan pengaturan umum agar selalu sesuai dengan Realtime Database
     const settingsRef = ref(realtimeDb, "settings/general");
-    const unsubscribe = onValue(settingsRef, (snapshot) => {
-      if (snapshot.exists()) {
-        setSettings((prev) => ({ ...prev, ...snapshot.val() }));
+    const unsubscribe = onValue(
+      settingsRef,
+      (snapshot) => {
+        if (snapshot.exists()) {
+          setSettings((prev) => ({ ...prev, ...snapshot.val() }));
+        }
+      },
+      (error) => {
+        console.error("Gagal memuat pengaturan", error);
+        setStatus({ state: "error", message: "Tidak bisa memuat pengaturan" });
       }
-    });
+    );
 
     return () => unsubscribe();
   }, []);
