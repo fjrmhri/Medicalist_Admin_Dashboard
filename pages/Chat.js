@@ -155,6 +155,16 @@ const Chat = () => {
       title="Inbox Konsultasi"
       description="Pantau dan balas pesan pasien secara real-time."
       actions={layoutActions}
+      actions=
+        status.message && status.type !== "idle" ? (
+          <span
+            className={`${styles.statusMessage} ${
+              status.type === "error" ? styles.statusMessageError : ""
+            }`}
+          >
+            {status.message}
+          </span>
+        ) : null
     >
       <div className={styles.chatShell}>
         <section className={styles.sidebar}>
