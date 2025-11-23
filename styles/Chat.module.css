@@ -147,6 +147,19 @@
   margin: auto;
 }
 
+.statusMessage {
+  padding: 8px 12px;
+  border-radius: 12px;
+  background: #e0f2fe;
+  color: #0369a1;
+  font-weight: 600;
+}
+
+.statusMessageError {
+  background: #fee2e2;
+  color: #b91c1c;
+}
+
 @media (max-width: 1024px) {
   .chatShell {
     grid-template-columns: 1fr;

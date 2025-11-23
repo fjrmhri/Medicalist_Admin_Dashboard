@@ -1,7 +1,8 @@
 import React, { useState } from "react";
-import { collection, getDocs, query, where } from "firebase/firestore";
 import { useRouter } from "next/router";
+import { collection, getDocs, query, where } from "firebase/firestore";
 import { FiLock, FiMail } from "react-icons/fi";
+
 import { firestoreDb } from "../lib/firebase";
 import styles from "../styles/Login.module.css";
 
@@ -17,6 +18,7 @@ const Login = () => {
     setIsLoading(true);
     setError("");
     try {
+      // Validasi kredensial dengan mencocokkan data Firestore
       const q = query(
         collection(firestoreDb, "admin"),
         where("username", "==", username),
@@ -29,6 +31,7 @@ const Login = () => {
         setError("Username atau password tidak valid");
       }
     } catch (err) {
+      console.error("Gagal memverifikasi login:", err);
       setError("Gagal terhubung ke server");
     } finally {
       setIsLoading(false);
